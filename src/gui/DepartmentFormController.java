@@ -4,7 +4,9 @@ package gui;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
+import java.util.Set;
 
 import db.DbException;
 import gui.listeners.DataChangeListener;
@@ -19,7 +21,9 @@ import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.Alert.AlertType;
 import model.entities.Department;
+import model.exceptions.ValidationException;
 import model.services.DepartmentService;
+
 
 public class DepartmentFormController implements Initializable{
 	
@@ -58,10 +62,15 @@ public class DepartmentFormController implements Initializable{
 		try {
 			entity = getFormData();		
 			service.saveOrUpdate(entity);
-			notifyDatachangeListeners(); // Notify subscribers when neede
+			notifyDatachangeListeners(); // Notify subscribers when needed
 			Utils.currentStage(event).close();
 			
-		} catch (DbException e) {
+		}
+		catch(ValidationException e)
+		{
+			setErrorMessages(e.getErros()); //treat exceptions in forms
+		}
+		catch (DbException e) {
 			// TODO: handle exception
 			Alerts.showAlert("Erros saving department", null, e.getMessage(), AlertType.ERROR);
 		}		
@@ -79,8 +88,20 @@ public class DepartmentFormController implements Initializable{
 	private Department getFormData() {
 		// TODO Auto-generated method stub
 		Department obj = new Department();
+		ValidationException exception = new ValidationException("Validation error");
+		
 		obj.setId(Utils.tryParseToInt(txtId.getText()));
+		
+		if(txtName.getText() == null || txtName.getText().trim().equals(""))
+		{
+			exception.addError("name","Field can't be empty");
+		}
+		
 		obj.setName(txtName.getText());
+		
+		if(exception.getErros().size() > 0) {
+			throw exception;
+		}
 		
 		return obj;
 	}
@@ -130,6 +151,15 @@ public class DepartmentFormController implements Initializable{
 		}
 		txtId.setText(entity.getId() == null ? "" : String.valueOf(entity.getId()));
 		txtName.setText(entity.getName());
+	}
+	
+	private void setErrorMessages(Map<String,String> errors)
+	{
+		Set<String> fields = errors.keySet();
+		if(fields.contains("name"))
+		{
+			labelErrorName.setText(errors.get("name"));
+		}
 	}
 
 }
